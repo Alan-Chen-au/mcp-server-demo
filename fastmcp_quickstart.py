@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     # FastMCP creates an ASGI server internally
     # We must access the underlying FastAPI app
-    app = mcp._server  # <-- This is the actual ASGI app
+    app = mcp.app  # <-- This is the actual ASGI app
 
     # Run Uvicorn manually so we can control the host/port for Render
     uvicorn.run(
