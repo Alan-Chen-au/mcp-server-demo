@@ -7,6 +7,7 @@ Run from the repository root:
 
 from mcp.server.fastmcp import FastMCP
 import os
+import uvicorn
 
 
 # Create an MCP server
@@ -42,4 +43,16 @@ def greet_user(name: str, style: str = "friendly") -> str:
 
 # Run with streamable HTTP transport
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    # Get port from Render (Render sets PORT automatically)
+    port = int(os.environ.get("PORT", 8000))
+
+    # FastMCP creates an ASGI server internally
+    # We must access the underlying FastAPI app
+    app = mcp._server  # <-- This is the actual ASGI app
+
+    # Run Uvicorn manually so we can control the host/port for Render
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+    )
