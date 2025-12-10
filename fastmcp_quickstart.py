@@ -42,9 +42,4 @@ def greet_user(name: str, style: str = "friendly") -> str:
 
 # Run with streamable HTTP transport
 if __name__ == "__main__":
-    port = int(os.environ["PORT"])  # Render injects this automatically
-    mcp.run(
-        transport="streamable-http",
-        host="0.0.0.0",
-        port=port,
-    )
+    mcp.run(transport="streamable-http")
