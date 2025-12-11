@@ -46,13 +46,18 @@ if __name__ == "__main__":
     # Get port from Render (Render sets PORT automatically)
     port = int(os.environ.get("PORT", 8000))
 
-    # FastMCP creates an ASGI server internally
-    # We must access the underlying FastAPI app
-    app = mcp.streamable_http_app  # <-- This is the actual ASGI app
+    # Use the FastMCP streamable HTTP app
+    # Mount at /mcp using a small wrapper ASGI app
+    from starlette.routing import Mount
+    from starlette.applications import Starlette
+
+    root_app = Starlette(routes=[
+        Mount("/mcp", app=mcp.streamable_http_app)
+    ])
 
     # Run Uvicorn manually so we can control the host/port for Render
     uvicorn.run(
-        app,
+        root_app,
         host="0.0.0.0",
         port=port,
     )
