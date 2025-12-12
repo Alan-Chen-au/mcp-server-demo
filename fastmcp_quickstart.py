@@ -1,5 +1,6 @@
 """
 FastMCP quickstart example with CORS support for MCP Inspector.
+Simplified version serving MCP at root path.
 
 Run from the repository root:
     uv run fastmcp_quickstart.py
@@ -9,10 +10,7 @@ from mcp.server.fastmcp import FastMCP
 import os
 import uvicorn
 from starlette.middleware.cors import CORSMiddleware
-from starlette.routing import Mount
 from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.routing import Route
 
 
 # Create an MCP server
@@ -46,29 +44,22 @@ def greet_user(name: str, style: str = "friendly") -> str:
     return f"{styles.get(style, styles['friendly'])} for someone named {name}."
 
 
-# Health check endpoint
-async def health_check(request):
-    return JSONResponse({"status": "healthy", "service": "MCP Server Demo"})
-
-
 # Run with streamable HTTP transport
 if __name__ == "__main__":
     # Get port from Render (Render sets PORT automatically)
     port = int(os.environ.get("PORT", 8000))
 
-    # Create the root app with MCP mounted at /mcp
-    root_app = Starlette(
-        routes=[
-            Route("/", health_check),
-            Route("/health", health_check),
-            Mount("/mcp", app=mcp.streamable_http_app()),
-        ]
-    )
+    # Get the MCP ASGI app
+    app = mcp.streamable_http_app()
 
-    # Add CORS middleware to allow MCP Inspector to connect
+    # Wrap in Starlette to add CORS
+    root_app = Starlette()
+    root_app.mount("/", app)
+
+    # Add CORS middleware
     root_app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Allow all origins for MCP Inspector
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -77,8 +68,7 @@ if __name__ == "__main__":
 
     # Run Uvicorn
     print(f"🚀 Starting MCP server on port {port}")
-    print(f"📍 MCP endpoint: http://0.0.0.0:{port}/mcp")
-    print(f"💚 Health check: http://0.0.0.0:{port}/health")
+    print(f"📍 MCP endpoint: http://0.0.0.0:{port}/")
 
     uvicorn.run(
         root_app,
