@@ -1,6 +1,5 @@
 """
 FastMCP quickstart example with CORS support for MCP Inspector.
-Simplified version serving MCP at root path.
 
 Run from the repository root:
     uv run fastmcp_quickstart.py
@@ -9,9 +8,11 @@ Run from the repository root:
 from mcp.server.fastmcp import FastMCP
 import os
 import uvicorn
+import contextlib
 from starlette.middleware.cors import CORSMiddleware
 from starlette.applications import Starlette
-
+from starlette.responses import JSONResponse
+from starlette.routing import Route, Mount
 
 # Create an MCP server
 mcp = FastMCP("Demo", json_response=True)
@@ -44,20 +45,34 @@ def greet_user(name: str, style: str = "friendly") -> str:
     return f"{styles.get(style, styles['friendly'])} for someone named {name}."
 
 
+# Health check endpoint
+async def health_check(request):
+    return JSONResponse({"status": "healthy", "service": "MCP Server Demo"})
+
+
+# Create a lifespan context manager to run the session manager
+@contextlib.asynccontextmanager
+async def lifespan(app: Starlette):
+    async with mcp.session_manager.run():
+        yield
+
+
 # Run with streamable HTTP transport
 if __name__ == "__main__":
     # Get port from Render (Render sets PORT automatically)
     port = int(os.environ.get("PORT", 8000))
 
-    # Get the MCP ASGI app
-    app = mcp.streamable_http_app()
-
-    # Wrap in Starlette to add CORS
-    root_app = Starlette()
-    root_app.mount("/", app)
+    # Mount the StreamableHTTP server to the existing ASGI server
+    app = Starlette(
+        routes=[
+            Route("/health", health_check),
+            Mount("/mcp", app=mcp.streamable_http_app()),
+        ],
+        lifespan=lifespan,
+    )
 
     # Add CORS middleware
-    root_app.add_middleware(
+    app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
         allow_credentials=True,
@@ -68,10 +83,11 @@ if __name__ == "__main__":
 
     # Run Uvicorn
     print(f"🚀 Starting MCP server on port {port}")
-    print(f"📍 MCP endpoint: http://0.0.0.0:{port}/")
+    print(f"📍 MCP endpoint: http://0.0.0.0:{port}/mcp")
+    print(f"💚 Health check: http://0.0.0.0:{port}/health")
 
     uvicorn.run(
-        root_app,
+        app,
         host="0.0.0.0",
         port=port,
         log_level="info",
