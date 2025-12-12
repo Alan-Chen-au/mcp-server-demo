@@ -1,21 +1,18 @@
 """
-FastMCP quickstart example with CORS support for MCP Inspector.
+FastMCP 2.0 server with CORS - FINAL WORKING VERSION
 
 Run from the repository root:
     uv run fastmcp_quickstart.py
 """
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 import os
 import uvicorn
-import contextlib
+from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.routing import Route, Mount
 
 # Create an MCP server
-mcp = FastMCP("Demo", json_response=True)
+mcp = FastMCP("Demo")
 
 
 # Add an addition tool
@@ -45,47 +42,36 @@ def greet_user(name: str, style: str = "friendly") -> str:
     return f"{styles.get(style, styles['friendly'])} for someone named {name}."
 
 
-# Health check endpoint
-async def health_check(request):
-    return JSONResponse({"status": "healthy", "service": "MCP Server Demo"})
-
-
-# Create a lifespan context manager to run the session manager
-@contextlib.asynccontextmanager
-async def lifespan(app: Starlette):
-    async with mcp.session_manager.run():
-        yield
-
-
-# Run with streamable HTTP transport
+# Run with HTTP transport
 if __name__ == "__main__":
     # Get port from Render (Render sets PORT automatically)
     port = int(os.environ.get("PORT", 8000))
 
-    # Mount the StreamableHTTP server to the existing ASGI server
-    app = Starlette(
-        routes=[
-            Route("/health", health_check),
-            Mount("/mcp", app=mcp.streamable_http_app()),
-        ],
-        lifespan=lifespan,
-    )
-
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["*"],
-    )
-
-    # Run Uvicorn
     print(f"🚀 Starting MCP server on port {port}")
     print(f"📍 MCP endpoint: http://0.0.0.0:{port}/mcp")
-    print(f"💚 Health check: http://0.0.0.0:{port}/health")
+    print(f"🌐 CORS enabled for all origins")
 
+    # Configure CORS middleware for browser-based MCP Inspector
+    middleware = [
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # Allow all origins for MCP Inspector
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+            allow_headers=[
+                "mcp-protocol-version",
+                "mcp-session-id",
+                "Authorization",
+                "Content-Type",
+            ],
+            expose_headers=["mcp-session-id"],
+        )
+    ]
+
+    # Create the HTTP app with CORS middleware
+    app = mcp.http_app(middleware=middleware)
+
+    # Run with uvicorn
     uvicorn.run(
         app,
         host="0.0.0.0",
