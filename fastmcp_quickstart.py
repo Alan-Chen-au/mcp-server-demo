@@ -1,5 +1,5 @@
 """
-FastMCP 2.0 server with CORS - FINAL WORKING VERSION
+FastMCP 2.0 server with CORS and health check - CORRECT VERSION
 
 Run from the repository root:
     uv run fastmcp_quickstart.py
@@ -10,9 +10,18 @@ import os
 import uvicorn
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
+from starlette.requests import Request
 
 # Create an MCP server
 mcp = FastMCP("Demo")
+
+
+# Add health check using custom_route decorator
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request):
+    """Health check endpoint for monitoring"""
+    return JSONResponse({"status": "healthy", "service": "MCP Server Demo"})
 
 
 # Add an addition tool
@@ -49,6 +58,7 @@ if __name__ == "__main__":
 
     print(f"🚀 Starting MCP server on port {port}")
     print(f"📍 MCP endpoint: http://0.0.0.0:{port}/mcp")
+    print(f"💚 Health check: http://0.0.0.0:{port}/health")
     print(f"🌐 CORS enabled for all origins")
 
     # Configure CORS middleware for browser-based MCP Inspector
@@ -58,13 +68,8 @@ if __name__ == "__main__":
             allow_origins=["*"],  # Allow all origins for MCP Inspector
             allow_credentials=True,
             allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-            allow_headers=[
-                "mcp-protocol-version",
-                "mcp-session-id",
-                "Authorization",
-                "Content-Type",
-            ],
-            expose_headers=["mcp-session-id"],
+            allow_headers=["*"],
+            expose_headers=["*"],
         )
     ]
 
